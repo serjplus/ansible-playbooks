@@ -1,0 +1,137 @@
+  - name: Install postgres development tools
+    apt: 
+      name: ['git', 'build-essential', 'cmake', 'valgrind', 'clang-format', 'systemd-coredump', 'strace', 'coccinelle']
+      update_cache: true
+      state: present
+
+  - name: Install PostgreSQL apt key
+    apt_key:
+      url: https://www.postgresql.org/media/keys/ACCC4CF8.asc 
+      state: present
+
+  - name: Add PostgreSQL repository
+    apt_repository:
+      repo: "deb http://apt.postgresql.org/pub/repos/apt bullseye-pgdg main"
+      state: present
+      update_cache: true
+
+  - name: Install PostgreSQL 12
+    apt: 
+      name: ['postgresql-12', 'postgresql-server-dev-12', 'pg-bsd-indent', 'perltidy', 'postgresql-12-dbgsym', 'libdbi-perl', 'python-is-python3']
+      update_cache: true
+      state: present 
+
+  - name: Make sure 'wheel' group exists
+    group:
+       name: wheel
+       state: present
+
+  - name: Allow 'wheel' group to have passwordless sudo
+    lineinfile:
+      dest: /etc/sudoers
+      state: present
+      regexp: '^%wheel'
+      line: '%wheel ALL=(ALL) NOPASSWD: ALL'
+      validate: 'visudo -cf %s'
+
+  - name: Add work worker
+    ansible.builtin.user:
+      name: '{{ username }}'
+      shell: /bin/bash
+      state: present
+      createhome: yes
+      groups: wheel
+      append: yes
+
+  - name: Copy vim config
+    ansible.builtin.copy:
+      remote_src: yes
+      src: /root/.vimrc
+      dest: '/home/{{ username }}/.vimrc'
+      owner: jan
+      group: jan
+
+  - name: Create ssh dir for work user
+    ansible.builtin.file:
+      path: '/home/{{ username }}/.ssh'
+      state: directory
+      mode: '0755'
+      owner: jan
+      group: jan
+
+  - name: Copy ssh key
+    ansible.builtin.copy:
+      remote_src: yes
+      src: /root/.ssh/authorized_keys
+      dest: '/home/{{ username }}/.ssh/authorized_keys'
+      owner: '{{ username }}'
+      group: '{{ username }}'
+      mode: '0600'
+
+  - name: Checkout TimescaleDB
+    git:
+     repo: https://github.com/timescale/timescaledb.git
+     dest: /home/{{ username }}/timescaledb
+     update: no
+     version: main
+ 
+  - name: Update owner of TimescaleDB
+    ansible.builtin.file:
+      path: "/home/{{username}}/timescaledb"
+      state: directory
+      recurse: yes
+      owner: '{{ username }}'
+      group: '{{ username }}'
+
+# Needed for clang-format-14
+  - name: Install LLVM apt key
+    apt_key:
+      url: https://apt.llvm.org/llvm-snapshot.gpg.key
+      state: present
+
+  - name: Add LLVM-14 repository
+    apt_repository:
+      repo: "deb http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-14 main"
+      state: present
+      update_cache: true
+
+  - name: Install clang-format-14
+    apt: 
+      name: ['clang-format-14']
+      update_cache: true
+      state: present
+
+  - name: clang-format alternative 
+    community.general.alternatives:
+      name: clang-format
+      path: /usr/bin/clang-format-11 
+      link: /usr/bin/clang-format 
+
+  - name: clang-format-11 alternative 
+    community.general.alternatives:
+      name: clang-format
+      path: /usr/bin/clang-format-11 
+      priority: 10
+
+  - name: clang-format-14 alternative 
+    community.general.alternatives:
+      name: clang-format
+      path: /usr/bin/clang-format-14 
+      priority: 100
+
+  - name: Install Timescale apt key
+    apt_key:
+     url: https://packagecloud.io/timescale/timescaledb/gpgkey
+     state: present
+
+  - name: Add Timescale repository
+    apt_repository:
+      repo: "deb https://packagecloud.io/timescale/timescaledb/debian/ buster main"
+      state: present
+      update_cache: true
+
+  - name: Install timescaledb-tools package
+    apt:
+      name: ['timescaledb-tools']
+      update_cache: true
+      state: present

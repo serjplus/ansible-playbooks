@@ -1,0 +1,16 @@
+
+- name: Manage basic servers
+  hosts: basichosts
+  vars:
+    username: jan
+  remote_user: root
+
+  tasks:
+  - name: Basic host setup
+    import_tasks: "../tasks/basic.yml"
+  - name: Postgres specific tasks
+    import_tasks: "../tasks/postgres-develop.yml"
+
+  handlers:
+  - name: Basic Handler
+    import_tasks: "../handlers/basic.yml"
